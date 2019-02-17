@@ -1,4 +1,4 @@
-defmodule SFTP.Toolkit.MixProject do
+defmodule SFTPToolkit.MixProject do
   use Mix.Project
 
   def project do
