@@ -24,7 +24,7 @@ defmodule SFTPToolkit.Upload do
   ## Options
 
   * `operation_timeout` - SFTP operation timeout (it is a timeout 
-     per each SFTP operation, not total timeout), defaults to 5000 ms,
+    per each SFTP operation, not total timeout), defaults to 5000 ms,
   * `chunk_size` - chunk size in bytes, defaults to 32KB.
 
   ## Return values
@@ -36,14 +36,14 @@ defmodule SFTPToolkit.Upload do
 
   * `{:local_open, info}` - the `File.open/2` on the local file failed,
   * `{:remote_open, info}` - the `:ssh_sftp.open/4` on the remote file 
-     failed,
+    failed,
   * `{:upload, {:read, info}}` - the `IO.binread/2` on the local file 
-     failed,
+    failed,
   * `{:upload, {:write, info}}` - the `:ssh_sftp.write/4` on the remote
-     file failed,
+    file failed,
   * `{:local_close, info}` - the `File.close/1` on the local file failed,
   * `{:remote_close, info}` - the `:ssh_sftp.close/2` on the remote file 
-     failed.
+    failed.
   """
   @spec upload_file(pid, Path.t, Path.t, [operation_timeout: timeout, chunk_size: pos_integer]) :: :ok | {:error, any}
   def upload_file(sftp_channel_pid, local_path, remote_path, options) do
