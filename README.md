@@ -30,7 +30,7 @@ end
 
 ## Copyright and License
 
-Copyright 2018, [Software Mansion](https://swmansion.com/?utm_source=git&utm_medium=readme&utm_campaign=sftp_toolkit)
+Copyright 2019, [Software Mansion](https://swmansion.com/?utm_source=git&utm_medium=readme&utm_campaign=sftp_toolkit)
 
 [![Software Mansion](https://membraneframework.github.io/static/logo/swm_logo_readme.png)](
 https://swmansion.com/?utm_source=git&utm_medium=readme&utm_campaign=sftp_toolkit)
