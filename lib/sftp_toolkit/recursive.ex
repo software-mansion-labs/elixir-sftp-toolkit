@@ -38,7 +38,7 @@ defmodule SFTPToolkit.Recursive do
 
   * `{:make_dir, info}` - `:ssh_sftp.make_dir/3` failed and `info`
     contains the underlying error returned from it,
-  * `{:file_info, info}` - `:ssh_sftp.read_file_info/3` failed and
+  * `{:file_info, path, info}` - `:ssh_sftp.read_file_info/3` failed and
     `info` contains the underlying error returned from it,
   * `{:invalid_type, path, type} - one of the components of the
     path to create, specified as `path` is not a directory, and
@@ -220,9 +220,9 @@ defmodule SFTPToolkit.Recursive do
   * `{:invalid_access, path, access}` - given path is a directory, but
     it's access is is invalid and it's actual access mode is specified
     as `access`.
-  * `{:list_dir, info}` - `:ssh_sftp.list_dir/3` failed and `info`
+  * `{:list_dir, path, info}` - `:ssh_sftp.list_dir/3` failed and `info`
     contains the underlying error returned from it,
-  * `{:file_info, info}` - `:ssh_sftp.read_file_info/3` failed and
+  * `{:file_info, path, info}` - `:ssh_sftp.read_file_info/3` failed and
     `info` contains the underlying error returned from it.
 
   ## Notes
@@ -287,7 +287,7 @@ defmodule SFTPToolkit.Recursive do
 
       {:error, reason} ->
         # List dir failed, error
-        {:error, {:list_dir, reason}}
+        {:error, {:list_dir, path, reason}}
     end
   end
 
@@ -405,7 +405,7 @@ defmodule SFTPToolkit.Recursive do
 
         {:error, reason} ->
           # File info read failed, error
-          {:error, {:file_info, reason}}
+          {:error, {:file_info, path_full, reason}}
       end
     else
       # If we're not allowed to read file info, honour instructions received from the iterate_callback function
@@ -427,6 +427,168 @@ defmodule SFTPToolkit.Recursive do
         :skip ->
           do_list_dir_iterate(sftp_channel_pid, path, tail, options, acc)
       end
+    end
+  end
+
+
+  @doc """
+  Recursively deletes a given directory over existing SFTP channel.
+
+  ## Arguments
+
+  Expects the following arguments:
+
+  * `sftp_channel_pid` - PID of already opened SFTP channel,
+  * `path` - path to delete,
+  * `options` - additional options, see below.
+
+  ## Options
+
+  * `operation_timeout` - SFTP operation timeout (it is a timeout
+     per each SFTP operation, not total timeout), defaults to 5000 ms.
+
+  ## Limitations
+
+  It will ignore symbolic links. They will not be followed.
+
+  ## Return values
+
+  On success returns `:ok`.
+
+  On error returns `{:error, reason}`, where `reason` might be one
+  of the following:
+
+  * `{:invalid_type, path, type} - given path is not a directory and
+    it's actual type is specified as `type`,
+  * `{:invalid_access, path, access}` - given path is a directory, but
+    it's access is is invalid and it's actual access mode is specified
+    as `access`,
+  * `{:delete, path, info}` - failed to delete file at `path`,
+  * `{:del_dir, path, info}` - failed to delete directory at `path`,
+  * `{:list_dir, path, info}` - `:ssh_sftp.list_dir/3` failed and `info`
+    contains the underlying error returned from it,
+  * `{:file_info, path, info}` - `:ssh_sftp.read_file_info/3` failed and
+    `info` contains the underlying error returned from it.
+
+  ## Notes
+
+  ### Timeouts
+
+  It was observed in the wild that underlying `:ssh_sftp.list_dir/3`
+  and `:ssh_sftp.read_file_info/3` always returned `{:error, :timeout}`
+  with some servers when SFTP version being used was greater than 3,
+  at least with Elixir 1.7.4 and Erlang 21.0. If you encounter such
+  issues try passing `{:sftp_vsn, 3}` option while creating a SFTP
+  channel.
+  """
+  @spec del_dir_recursive(pid, Path.t(), operation_timeout: timeout) :: {:ok, [] | [Path.t() | {Path.t(), :file.file_info()}]} | {:error, any}
+  def del_dir_recursive(sftp_channel_pid, path, options \\ []) do
+    case :ssh_sftp.read_file_info(
+           sftp_channel_pid,
+           path,
+           Keyword.get(options, :operation_timeout, @default_operation_timeout)
+         ) do
+      {:ok,
+       {:file_info, _size, :directory, access, _atime, _mtime, _ctime, _mode, _links,
+        _major_device, _minor_device, _inode, _uid, _gid}}
+      when access in [:write, :read_write] ->
+        # Given path is a directory and we have right permissions, recurse
+        do_del_dir_recursive(sftp_channel_pid, path, options)
+
+      {:ok,
+       {:file_info, _size, :directory, access, _atime, _mtime, _ctime, _mode, _links,
+        _major_device, _minor_device, _inode, _uid, _gid}} ->
+        # Given path is a directory but we do not have have right permissions, error
+        {:error, {:invalid_access, path, access}}
+
+      {:ok,
+       {:file_info, _size, type, _access, _atime, _mtime, _ctime, _mode, _links, _major_device,
+        _minor_device, _inode, _uid, _gid}} ->
+        # Given path is not a directory, error
+        {:error, {:invalid_type, path, type}}
+    end
+  end
+
+  defp do_del_dir_recursive(sftp_channel_pid, path, options) do
+    case :ssh_sftp.list_dir(
+           sftp_channel_pid,
+           path,
+           Keyword.get(options, :operation_timeout, @default_operation_timeout)
+         ) do
+      {:ok, files} ->
+        case do_del_dir_iterate(sftp_channel_pid, path, files, options) do
+          :ok ->
+            :ok
+
+          {:error, reason} ->
+            {:error, reason}
+        end
+
+      {:error, reason} ->
+        # List dir failed, error
+        {:error, {:list_dir, path, reason}}
+    end
+  end
+
+  defp do_del_dir_iterate(_sftp_channel_pid, _path, [], _options) do
+    :ok
+  end
+
+  defp do_del_dir_iterate(sftp_channel_pid, path, [head | tail], options)
+       when head in ['.', '..'] do
+    do_del_dir_iterate(sftp_channel_pid, path, tail, options)
+  end
+
+  defp do_del_dir_iterate(sftp_channel_pid, path, [head | tail], options) do
+    path_full = Path.join(path, head)
+    operation_timeout = Keyword.get(options, :operation_timeout, @default_operation_timeout)
+
+    case :ssh_sftp.read_file_info(
+            sftp_channel_pid,
+            path_full,
+            operation_timeout
+          ) do
+      {:ok,
+        {:file_info, _size, :directory, access, _atime, _mtime, _ctime, _mode, _links,
+        _major_device, _minor_device, _inode, _uid, _gid}}
+      when access in [:write, :read_write] ->
+        # Directory already exists and we have right permissions, recurse
+        case do_del_dir_recursive(sftp_channel_pid, path_full, options) do
+          :ok ->
+            # After recursion is finished, delete the directory
+            case :ssh_sftp.del_dir(sftp_channel_pid, path_full, operation_timeout) do
+              :ok ->
+                do_del_dir_iterate(sftp_channel_pid, path, tail, options)
+              {:error, reason} ->
+                {:error, {:del_dir, path_full, reason}}
+            end
+
+          {:error, reason} ->
+            {:error, reason}
+        end
+
+      {:ok,
+        {:file_info, _size, _type, access, _atime, _mtime, _ctime, _mode, _links, _major_device,
+        _minor_device, _inode, _uid, _gid}}
+      when access in [:write, :read_write] ->
+        # We found a different file than a directory and it is writable, try to delete it
+        case :ssh_sftp.delete(sftp_channel_pid, path_full, operation_timeout) do
+          :ok ->
+            # Deleted, proceed
+            do_del_dir_iterate(sftp_channel_pid, path, tail, options)
+          {:error, reason} ->
+            {:error, {:delete, path_full, reason}}
+        end
+
+      {:ok,
+        {:file_info, _size, _type, access, _atime, _mtime, _ctime, _mode, _links, _major_device,
+        _minor_device, _inode, _uid, _gid}} ->
+        # We read something but we have no permissions, error
+        {:error, {:invalid_access, path_full, access}}
+
+      {:error, reason} ->
+        # File info read failed, error
+        {:error, {:file_info, path_full, reason}}
     end
   end
 end
