@@ -53,7 +53,7 @@ defmodule SFTPToolkit.Upload do
     withl local_open: {:ok, local_path} <- File.open(local_path, [:binary, :read, :read_ahead]),
           remote_open: {:ok, remote_path} <- :ssh_sftp.open(sftp_channel_pid, remote_path, [:write, :creat, :binary], operation_timeout),
           upload: :ok <- do_upload_file(sftp_channel_pid, local_path, remote_path, chunk_size, operation_timeout),
-          remote_close: :ok <- :ssh_sftp.close(sftp_channel_pid, remote_path),
+          remote_close: :ok <- :ssh_sftp.close(sftp_channel_pid, remote_path, operation_timeout),
           local_close: :ok <- File.close(local_path)
     do
       :ok
