@@ -1,11 +1,24 @@
-# SftpToolkit
+# SFTPToolkit
 
-**TODO: Add description**
+[![Hex.pm](https://img.shields.io/hexpm/v/sftp_toolkit.svg)](https://hex.pm/packages/sftp_toolkit)
+[![API Docs](https://img.shields.io/badge/api-docs-yellow.svg?style=flat)](https://hexdocs.pm/sftp_toolkit/)
+
+A library that adds a lot of useful routines for handling SFTP for the Elixir
+programming language.
+
+It adds utility functions for:
+
+* recursive operations on the directories (creating, listing, removing),
+* uploading files,
+* downloading files.
+
+It is fully compatible with Erlang's `:ssh_sftp` module and introduces no
+unnecessary abstraction layer.
 
 ## Installation
 
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `sftp_toolkit` to your list of dependencies in `mix.exs`:
+The package can be installed by adding `sftp_toolkit` to your list of dependencies 
+in `mix.exs`:
 
 ```elixir
 def deps do
@@ -15,7 +28,11 @@ def deps do
 end
 ```
 
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at [https://hexdocs.pm/sftp_toolkit](https://hexdocs.pm/sftp_toolkit).
+## Copyright and License
 
+Copyright 2018, [Software Mansion](https://swmansion.com/?utm_source=git&utm_medium=readme&utm_campaign=sftp_toolkit)
+
+[![Software Mansion](https://membraneframework.github.io/static/logo/swm_logo_readme.png)](
+https://swmansion.com/?utm_source=git&utm_medium=readme&utm_campaign=sftp_toolkit)
+
+Licensed under the [Apache License, Version 2.0](LICENSE)
