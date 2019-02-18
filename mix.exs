@@ -19,7 +19,7 @@ defmodule SFTPToolkit.MixProject do
 
   defp deps do
     [
-      {:bunch, "~> 0.1.2"},
+      {:bunch, "~> 0.1.2"}
     ]
   end
 end

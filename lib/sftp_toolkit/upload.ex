@@ -45,17 +45,33 @@ defmodule SFTPToolkit.Upload do
   * `{:remote_close, info}` - the `:ssh_sftp.close/2` on the remote file 
     failed.
   """
-  @spec upload_file(pid, Path.t, Path.t, [operation_timeout: timeout, chunk_size: pos_integer]) :: :ok | {:error, any}
+  @spec upload_file(pid, Path.t(), Path.t(), operation_timeout: timeout, chunk_size: pos_integer) ::
+          :ok | {:error, any}
   def upload_file(sftp_channel_pid, local_path, remote_path, options) do
     chunk_size = Keyword.get(options, :chunk_size, @default_chunk_size)
     operation_timeout = Keyword.get(options, :operation_timeout, @default_operation_timeout)
 
     withl local_open: {:ok, local_handle} <- File.open(local_path, [:binary, :read, :read_ahead]),
-          remote_open: {:ok, remote_handle} <- :ssh_sftp.open(sftp_channel_pid, remote_path, [:write, :creat, :binary], operation_timeout),
-          upload: :ok <- do_upload_file(sftp_channel_pid, local_handle, remote_handle, chunk_size, operation_timeout),
-          remote_close: :ok <- :ssh_sftp.close(sftp_channel_pid, remote_handle, operation_timeout),
-          local_close: :ok <- File.close(local_handle)
-    do
+          remote_open:
+            {:ok, remote_handle} <-
+              :ssh_sftp.open(
+                sftp_channel_pid,
+                remote_path,
+                [:write, :creat, :binary],
+                operation_timeout
+              ),
+          upload:
+            :ok <-
+              do_upload_file(
+                sftp_channel_pid,
+                local_handle,
+                remote_handle,
+                chunk_size,
+                operation_timeout
+              ),
+          remote_close:
+            :ok <- :ssh_sftp.close(sftp_channel_pid, remote_handle, operation_timeout),
+          local_close: :ok <- File.close(local_handle) do
       :ok
     else
       local_open: {:error, reason} -> {:error, {:local_open, reason}}
@@ -66,16 +82,31 @@ defmodule SFTPToolkit.Upload do
     end
   end
 
-  defp do_upload_file(sftp_channel_pid, local_handle, remote_handle, chunk_size, operation_timeout) do
+  defp do_upload_file(
+         sftp_channel_pid,
+         local_handle,
+         remote_handle,
+         chunk_size,
+         operation_timeout
+       ) do
     case IO.binread(local_handle, chunk_size) do
       :eof ->
         :ok
+
       {:error, reason} ->
         {:error, {:read, reason}}
+
       data ->
         case :ssh_sftp.write(sftp_channel_pid, remote_handle, data, operation_timeout) do
           :ok ->
-            do_upload_file(sftp_channel_pid, local_handle, remote_handle, chunk_size, operation_timeout)
+            do_upload_file(
+              sftp_channel_pid,
+              local_handle,
+              remote_handle,
+              chunk_size,
+              operation_timeout
+            )
+
           {:error, reason} ->
             {:error, {:write, reason}}
         end

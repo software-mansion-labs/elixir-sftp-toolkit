@@ -74,34 +74,51 @@ defmodule SFTPToolkit.Recursive do
   issues try passing `{:sftp_vsn, 3}` option while creating a SFTP
   channel.
   """
-  @spec make_dir_recursive(pid, Path.t, [operation_timeout: timeout]) :: :ok | {:error, any}
+  @spec make_dir_recursive(pid, Path.t(), operation_timeout: timeout) :: :ok | {:error, any}
   def make_dir_recursive(sftp_channel_pid, path, options \\ []) do
     do_make_dir_recursive(sftp_channel_pid, Path.split(path), options, [])
   end
 
   defp do_make_dir_recursive(_sftp_channel_pid, [], _options, _acc), do: :ok
 
-  defp do_make_dir_recursive(sftp_channel_pid, [head|tail], options, acc) do
-    path = Path.join(Enum.reverse([head|acc]))
-    case :ssh_sftp.read_file_info(sftp_channel_pid, path, Keyword.get(options, :operation_timeout, @default_operation_timeout)) do
-      {:ok, {:file_info, _size, :directory, access, _atime, _mtime, _ctime, _mode, _links, _major_device, _minor_device, _inode, _uid, _gid}} when access in [:write, :read_write] ->
-        # Directory already exists and we have right permissions, skip creation
-        do_make_dir_recursive(sftp_channel_pid, tail, options, [head|acc])
+  defp do_make_dir_recursive(sftp_channel_pid, [head | tail], options, acc) do
+    path = Path.join(Enum.reverse([head | acc]))
 
-      {:ok, {:file_info, _size, :directory, access, _atime, _mtime, _ctime, _mode, _links, _major_device, _minor_device, _inode, _uid, _gid}} ->
+    case :ssh_sftp.read_file_info(
+           sftp_channel_pid,
+           path,
+           Keyword.get(options, :operation_timeout, @default_operation_timeout)
+         ) do
+      {:ok,
+       {:file_info, _size, :directory, access, _atime, _mtime, _ctime, _mode, _links,
+        _major_device, _minor_device, _inode, _uid, _gid}}
+      when access in [:write, :read_write] ->
+        # Directory already exists and we have right permissions, skip creation
+        do_make_dir_recursive(sftp_channel_pid, tail, options, [head | acc])
+
+      {:ok,
+       {:file_info, _size, :directory, access, _atime, _mtime, _ctime, _mode, _links,
+        _major_device, _minor_device, _inode, _uid, _gid}} ->
         # Directory already exists but we have invalid access mode, error
         {:error, {:invalid_access, path, access}}
 
-      {:ok, {:file_info, _size, type, _access, _atime, _mtime, _ctime, _mode, _links, _major_device, _minor_device, _inode, _uid, _gid}} ->
+      {:ok,
+       {:file_info, _size, type, _access, _atime, _mtime, _ctime, _mode, _links, _major_device,
+        _minor_device, _inode, _uid, _gid}} ->
         # Path component already exists but it is not a directory
         {:error, {:invalid_type, path, type}}
 
       {:error, :no_such_file} ->
         # There's no such directory, try to create it
-        case :ssh_sftp.make_dir(sftp_channel_pid, path, Keyword.get(options, :operation_timeout, @default_operation_timeout)) do
+        case :ssh_sftp.make_dir(
+               sftp_channel_pid,
+               path,
+               Keyword.get(options, :operation_timeout, @default_operation_timeout)
+             ) do
           :ok ->
             # We made it, recurse
-            do_make_dir_recursive(sftp_channel_pid, tail, options, [head|acc])
+            do_make_dir_recursive(sftp_channel_pid, tail, options, [head | acc])
+
           {:error, reason} ->
             # Directory creation failed, error
             {:error, {:make_dir, reason}}
@@ -112,7 +129,6 @@ defmodule SFTPToolkit.Recursive do
         {:error, {:file_info, other}}
     end
   end
-
 
   @doc """
   Recursively lists files in a given directory over existing SFTP
@@ -220,38 +236,55 @@ defmodule SFTPToolkit.Recursive do
   issues try passing `{:sftp_vsn, 3}` option while creating a SFTP
   channel.
   """
-  @spec list_dir_recursive(pid, Path.t, [
-    operation_timeout: timeout,
-    result_format: :path | :file_info,
-    included_types: [:device | :directory | :other | :regular | :symlink | :undefined],
-    recurse_callback: nil | (Path.t -> :skip | :skip_but_include | :ok),
-    iterate_callback: nil | (Path.t -> :skip | :skip_but_include | :ok),
-  ]) :: {:ok, [] | [Path.t | {Path.t, :file.file_info}]} | {:error, any}
+  @spec list_dir_recursive(pid, Path.t(),
+          operation_timeout: timeout,
+          result_format: :path | :file_info,
+          included_types: [:device | :directory | :other | :regular | :symlink | :undefined],
+          recurse_callback: nil | (Path.t() -> :skip | :skip_but_include | :ok),
+          iterate_callback: nil | (Path.t() -> :skip | :skip_but_include | :ok)
+        ) :: {:ok, [] | [Path.t() | {Path.t(), :file.file_info()}]} | {:error, any}
   def list_dir_recursive(sftp_channel_pid, path \\ "", options \\ []) do
-    case :ssh_sftp.read_file_info(sftp_channel_pid, path, Keyword.get(options, :operation_timeout, @default_operation_timeout)) do
-      {:ok, {:file_info, _size, :directory, access, _atime, _mtime, _ctime, _mode, _links, _major_device, _minor_device, _inode, _uid, _gid}} when access in [:read, :read_write] ->
+    case :ssh_sftp.read_file_info(
+           sftp_channel_pid,
+           path,
+           Keyword.get(options, :operation_timeout, @default_operation_timeout)
+         ) do
+      {:ok,
+       {:file_info, _size, :directory, access, _atime, _mtime, _ctime, _mode, _links,
+        _major_device, _minor_device, _inode, _uid, _gid}}
+      when access in [:read, :read_write] ->
         # Given path is a directory and we have right permissions, recurse
         do_list_dir_recursive(sftp_channel_pid, path, options, [])
 
-      {:ok, {:file_info, _size, :directory, access, _atime, _mtime, _ctime, _mode, _links, _major_device, _minor_device, _inode, _uid, _gid}} ->
+      {:ok,
+       {:file_info, _size, :directory, access, _atime, _mtime, _ctime, _mode, _links,
+        _major_device, _minor_device, _inode, _uid, _gid}} ->
         # Given path is a directory but we do not have have right permissions, error
         {:error, {:invalid_access, path, access}}
 
-      {:ok, {:file_info, _size, type, _access, _atime, _mtime, _ctime, _mode, _links, _major_device, _minor_device, _inode, _uid, _gid}} ->
+      {:ok,
+       {:file_info, _size, type, _access, _atime, _mtime, _ctime, _mode, _links, _major_device,
+        _minor_device, _inode, _uid, _gid}} ->
         # Given path is not a directory, error
         {:error, {:invalid_type, path, type}}
     end
   end
 
   defp do_list_dir_recursive(sftp_channel_pid, path, options, acc) do
-    case :ssh_sftp.list_dir(sftp_channel_pid, path, Keyword.get(options, :operation_timeout, @default_operation_timeout)) do
+    case :ssh_sftp.list_dir(
+           sftp_channel_pid,
+           path,
+           Keyword.get(options, :operation_timeout, @default_operation_timeout)
+         ) do
       {:ok, files} ->
         case do_list_dir_iterate(sftp_channel_pid, path, files, options, acc) do
           {:ok, files} ->
             {:ok, files}
+
           {:error, reason} ->
             {:error, reason}
         end
+
       {:error, reason} ->
         # List dir failed, error
         {:error, {:list_dir, reason}}
@@ -262,52 +295,67 @@ defmodule SFTPToolkit.Recursive do
     {:ok, acc}
   end
 
-  defp do_list_dir_iterate(sftp_channel_pid, path, [head|tail], options, acc) when head in ['.', '..'] do
+  defp do_list_dir_iterate(sftp_channel_pid, path, [head | tail], options, acc)
+       when head in ['.', '..'] do
     do_list_dir_iterate(sftp_channel_pid, path, tail, options, acc)
   end
 
-  defp do_list_dir_iterate(sftp_channel_pid, path, [head|tail], options, acc) do
+  defp do_list_dir_iterate(sftp_channel_pid, path, [head | tail], options, acc) do
     path_full = Path.join(path, head)
     included_types = Keyword.get(options, :included_types, [:regular])
     iterate_callback = Keyword.get(options, :iterate_callback, nil)
     recurse_callback = Keyword.get(options, :recurse_callback, nil)
 
     # Call iterate_callback function only once, if it's present and store the return value
-    iterate_callback_result = if !is_nil(iterate_callback) do
-      iterate_callback.(path_full)
-    end
+    iterate_callback_result =
+      if !is_nil(iterate_callback) do
+        iterate_callback.(path_full)
+      end
 
     # If we're allowed to read file info, do this
     if is_nil(iterate_callback) or (!is_nil(iterate_callback) and iterate_callback_result == :ok) do
-      case :ssh_sftp.read_file_info(sftp_channel_pid, path_full, Keyword.get(options, :operation_timeout, @default_operation_timeout)) do
-        {:ok, {:file_info, _size, :directory, access, _atime, _mtime, _ctime, _mode, _links, _major_device, _minor_device, _inode, _uid, _gid} = file_info} when access in [:read, :read_write] ->
+      case :ssh_sftp.read_file_info(
+             sftp_channel_pid,
+             path_full,
+             Keyword.get(options, :operation_timeout, @default_operation_timeout)
+           ) do
+        {:ok,
+         {:file_info, _size, :directory, access, _atime, _mtime, _ctime, _mode, _links,
+          _major_device, _minor_device, _inode, _uid, _gid} = file_info}
+        when access in [:read, :read_write] ->
           # Directory already exists and we have right permissions
 
           # Determine what data should be added to the result
-          result_item = case Keyword.get(options, :result_format, :path) do
-            :path ->
-              path_full
-            :file_info ->
-              {path_full, file_info}
-          end
+          result_item =
+            case Keyword.get(options, :result_format, :path) do
+              :path ->
+                path_full
+
+              :file_info ->
+                {path_full, file_info}
+            end
 
           # Store it if :directory was listed in the included_types
-          acc = if :directory in included_types do
-            [result_item|acc]
-          else
-            acc
-          end
+          acc =
+            if :directory in included_types do
+              [result_item | acc]
+            else
+              acc
+            end
 
           # Call recurse_callback function only once, if it's present and store the return value
-          recurse_callback_result = if !is_nil(recurse_callback) do
-            recurse_callback.(path_full)
-          end
+          recurse_callback_result =
+            if !is_nil(recurse_callback) do
+              recurse_callback.(path_full)
+            end
 
           # If we're allowed to recurse, do this
-          if is_nil(recurse_callback) or (!is_nil(recurse_callback) and recurse_callback_result == :ok) do
+          if is_nil(recurse_callback) or
+               (!is_nil(recurse_callback) and recurse_callback_result == :ok) do
             case do_list_dir_recursive(sftp_channel_pid, path_full, options, acc) do
               {:ok, acc} ->
                 do_list_dir_iterate(sftp_channel_pid, path, tail, options, acc)
+
               {:error, reason} ->
                 {:error, reason}
             end
@@ -315,34 +363,43 @@ defmodule SFTPToolkit.Recursive do
             # If we're not allowed to recurse, honour instructions received from the recurse_callback function
             case recurse_callback_result do
               :skip_but_include ->
-                do_list_dir_iterate(sftp_channel_pid, path, tail, options, [result_item|acc])
+                do_list_dir_iterate(sftp_channel_pid, path, tail, options, [result_item | acc])
+
               :skip ->
                 do_list_dir_iterate(sftp_channel_pid, path, tail, options, acc)
             end
           end
 
-        {:ok, {:file_info, _size, type, access, _atime, _mtime, _ctime, _mode, _links, _major_device, _minor_device, _inode, _uid, _gid} = file_info} when access in [:read, :read_write] ->
+        {:ok,
+         {:file_info, _size, type, access, _atime, _mtime, _ctime, _mode, _links, _major_device,
+          _minor_device, _inode, _uid, _gid} = file_info}
+        when access in [:read, :read_write] ->
           # We found a different file than a directory and it is readable
 
           # Determine what data should be added to the result
-          result_item = case Keyword.get(options, :result_format, :path) do
-            :path ->
-              path_full
-            :file_info ->
-              {path_full, file_info}
-          end
+          result_item =
+            case Keyword.get(options, :result_format, :path) do
+              :path ->
+                path_full
+
+              :file_info ->
+                {path_full, file_info}
+            end
 
           # Add it to the result it if its type was listed in the included_typesd
-          acc = if type in included_types do
-            [result_item|acc]
-          else
-            acc
-          end
+          acc =
+            if type in included_types do
+              [result_item | acc]
+            else
+              acc
+            end
 
           # Proceed
           do_list_dir_iterate(sftp_channel_pid, path, tail, options, acc)
 
-        {:ok, {:file_info, _size, _type, _access, _atime, _mtime, _ctime, _mode, _links, _major_device, _minor_device, _inode, _uid, _gid}} ->
+        {:ok,
+         {:file_info, _size, _type, _access, _atime, _mtime, _ctime, _mode, _links, _major_device,
+          _minor_device, _inode, _uid, _gid}} ->
           # We read something but we have no permissions, ignore that
           do_list_dir_iterate(sftp_channel_pid, path, tail, options, acc)
 
@@ -355,15 +412,18 @@ defmodule SFTPToolkit.Recursive do
       case iterate_callback_result do
         :skip_but_include ->
           # Determine what data should be added to the result
-          result_item = case Keyword.get(options, :result_format, :path) do
-            :path ->
-              path_full
-            :file_info ->
-              # If read_file_info was called the file info is unknown
-              {path_full, :unknown}
-          end
+          result_item =
+            case Keyword.get(options, :result_format, :path) do
+              :path ->
+                path_full
 
-          do_list_dir_iterate(sftp_channel_pid, path, tail, options, [result_item|acc])
+              :file_info ->
+                # If read_file_info was called the file info is unknown
+                {path_full, :unknown}
+            end
+
+          do_list_dir_iterate(sftp_channel_pid, path, tail, options, [result_item | acc])
+
         :skip ->
           do_list_dir_iterate(sftp_channel_pid, path, tail, options, acc)
       end
