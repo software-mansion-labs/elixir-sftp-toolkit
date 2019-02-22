@@ -430,7 +430,6 @@ defmodule SFTPToolkit.Recursive do
     end
   end
 
-
   @doc """
   Recursively deletes a given directory over existing SFTP channel.
 
@@ -481,7 +480,8 @@ defmodule SFTPToolkit.Recursive do
   issues try passing `{:sftp_vsn, 3}` option while creating a SFTP
   channel.
   """
-  @spec del_dir_recursive(pid, Path.t(), operation_timeout: timeout) :: {:ok, [] | [Path.t() | {Path.t(), :file.file_info()}]} | {:error, any}
+  @spec del_dir_recursive(pid, Path.t(), operation_timeout: timeout) ::
+          {:ok, [] | [Path.t() | {Path.t(), :file.file_info()}]} | {:error, any}
   def del_dir_recursive(sftp_channel_pid, path, options \\ []) do
     case :ssh_sftp.read_file_info(
            sftp_channel_pid,
@@ -544,12 +544,12 @@ defmodule SFTPToolkit.Recursive do
     operation_timeout = Keyword.get(options, :operation_timeout, @default_operation_timeout)
 
     case :ssh_sftp.read_file_info(
-            sftp_channel_pid,
-            path_full,
-            operation_timeout
-          ) do
+           sftp_channel_pid,
+           path_full,
+           operation_timeout
+         ) do
       {:ok,
-        {:file_info, _size, :directory, access, _atime, _mtime, _ctime, _mode, _links,
+       {:file_info, _size, :directory, access, _atime, _mtime, _ctime, _mode, _links,
         _major_device, _minor_device, _inode, _uid, _gid}}
       when access in [:write, :read_write] ->
         # Directory already exists and we have right permissions, recurse
@@ -559,6 +559,7 @@ defmodule SFTPToolkit.Recursive do
             case :ssh_sftp.del_dir(sftp_channel_pid, path_full, operation_timeout) do
               :ok ->
                 do_del_dir_iterate(sftp_channel_pid, path, tail, options)
+
               {:error, reason} ->
                 {:error, {:del_dir, path_full, reason}}
             end
@@ -568,7 +569,7 @@ defmodule SFTPToolkit.Recursive do
         end
 
       {:ok,
-        {:file_info, _size, _type, access, _atime, _mtime, _ctime, _mode, _links, _major_device,
+       {:file_info, _size, _type, access, _atime, _mtime, _ctime, _mode, _links, _major_device,
         _minor_device, _inode, _uid, _gid}}
       when access in [:write, :read_write] ->
         # We found a different file than a directory and it is writable, try to delete it
@@ -576,12 +577,13 @@ defmodule SFTPToolkit.Recursive do
           :ok ->
             # Deleted, proceed
             do_del_dir_iterate(sftp_channel_pid, path, tail, options)
+
           {:error, reason} ->
             {:error, {:delete, path_full, reason}}
         end
 
       {:ok,
-        {:file_info, _size, _type, access, _atime, _mtime, _ctime, _mode, _links, _major_device,
+       {:file_info, _size, _type, access, _atime, _mtime, _ctime, _mode, _links, _major_device,
         _minor_device, _inode, _uid, _gid}} ->
         # We read something but we have no permissions, error
         {:error, {:invalid_access, path_full, access}}
