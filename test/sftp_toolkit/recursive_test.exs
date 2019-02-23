@@ -26,6 +26,7 @@ defmodule SFTPToolkit.RecursiveTest do
     :ok = File.mkdir_p!(tempdir)
 
     {:ok, daemon_ref} =
+      {:ok, ssh_daemon_ref} =
       :ssh.daemon(:loopback, 0,
         user_passwords: [{'someuser', 'somepassword'}],
         system_dir: Path.join([System.cwd!(), "test", "extra", "ssh"]) |> to_charlist,
@@ -44,8 +45,12 @@ defmodule SFTPToolkit.RecursiveTest do
         silently_accept_hosts: true
       )
 
-    on_exit(:ssh, fn ->
+    on_exit(:ssh_client, fn ->
       :ssh.close(ssh_connection_ref)
+    end)
+
+    on_exit(:ssh_daemon, fn ->
+      :ssh.stop_daemon(ssh_daemon_ref)
     end)
 
     on_exit(:del, fn ->
