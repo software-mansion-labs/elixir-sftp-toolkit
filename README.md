@@ -2,6 +2,7 @@
 
 [![Hex.pm](https://img.shields.io/hexpm/v/sftp_toolkit.svg)](https://hex.pm/packages/sftp_toolkit)
 [![API Docs](https://img.shields.io/badge/api-docs-yellow.svg?style=flat)](https://hexdocs.pm/sftp_toolkit/)
+[![CircleCI](https://circleci.com/gh/SoftwareMansion/elixir-sftp-toolkit/tree/master.svg?style=shield)](https://circleci.com/gh/SoftwareMansion/elixir-sftp-toolkit/tree/master)
 
 A library that adds a lot of useful routines for the SFTP client for the Elixir
 programming language.
