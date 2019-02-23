@@ -483,17 +483,32 @@ defmodule SFTPToolkit.Recursive do
   @spec del_dir_recursive(pid, Path.t(), operation_timeout: timeout) ::
           {:ok, [] | [Path.t() | {Path.t(), :file.file_info()}]} | {:error, any}
   def del_dir_recursive(sftp_channel_pid, path, options \\ []) do
+    operation_timeout = Keyword.get(options, :operation_timeout, @default_operation_timeout)
+
     case :ssh_sftp.read_file_info(
            sftp_channel_pid,
            path,
-           Keyword.get(options, :operation_timeout, @default_operation_timeout)
+           operation_timeout
          ) do
       {:ok,
        {:file_info, _size, :directory, access, _atime, _mtime, _ctime, _mode, _links,
         _major_device, _minor_device, _inode, _uid, _gid}}
       when access in [:write, :read_write] ->
         # Given path is a directory and we have right permissions, recurse
-        do_del_dir_recursive(sftp_channel_pid, path, options)
+        case do_del_dir_recursive(sftp_channel_pid, path, options) do
+          :ok ->
+            # After recursion is finished, delete the directory
+            case :ssh_sftp.del_dir(sftp_channel_pid, path, operation_timeout) do
+              :ok ->
+                :ok
+
+              {:error, reason} ->
+                {:error, {:del_dir, path, reason}}
+            end
+
+          {:error, reason} ->
+            {:error, reason}
+        end
 
       {:ok,
        {:file_info, _size, :directory, access, _atime, _mtime, _ctime, _mode, _links,
@@ -506,6 +521,9 @@ defmodule SFTPToolkit.Recursive do
         _minor_device, _inode, _uid, _gid}} ->
         # Given path is not a directory, error
         {:error, {:invalid_type, path, type}}
+
+      {:error, reason} ->
+        {:error, {:file_info, path, reason}}
     end
   end
 

@@ -24,7 +24,6 @@ defmodule SFTPToolkit.Support.SSHDaemon do
     end
   end
 
-
   defmacro __using__([]) do
     quote do
       setup do
