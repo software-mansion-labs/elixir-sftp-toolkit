@@ -7,7 +7,7 @@ defmodule SFTPToolkit.Upload do
 
   @default_operation_timeout 5000
   @default_chunk_size 32768
-  @default_remote_mode [:write, :creat, :binary]
+  @default_remote_mode [:binary, :write, :creat]
   @default_local_mode [:binary, :read, :read_ahead]
 
   @doc """
@@ -29,7 +29,7 @@ defmodule SFTPToolkit.Upload do
     per each SFTP operation, not total timeout), defaults to 5000 ms,
   * `chunk_size` - chunk size in bytes, defaults to 32KB,
   * `remote_mode` - mode used while opening the remote file, defaults
-    to `[:write, :creat, :binary]`, see `:ssh_sftp.open/3` for possible
+    to `[:binary, :write, :creat]`, see `:ssh_sftp.open/3` for possible
     values,
   * `local_mode` - mode used while opening the local file, defaults
     to `[:binary, :read, :read_ahead]`, see `File.open/2` for possible
@@ -53,8 +53,12 @@ defmodule SFTPToolkit.Upload do
   * `{:remote_close, info}` - the `:ssh_sftp.close/2` on the remote file
     failed.
   """
-  @spec upload_file(pid, Path.t(), Path.t(), operation_timeout: timeout, chunk_size: pos_integer) ::
-          :ok | {:error, any}
+  @spec upload_file(pid, Path.t(), Path.t(),
+          operation_timeout: timeout,
+          chunk_size: pos_integer,
+          remote_mode: [:read | :write | :creat | :trunc | :append | :binary],
+          local_mode: [File.mode()]
+        ) :: :ok | {:error, any}
   def upload_file(sftp_channel_pid, local_path, remote_path, options \\ []) do
     chunk_size = Keyword.get(options, :chunk_size, @default_chunk_size)
     operation_timeout = Keyword.get(options, :operation_timeout, @default_operation_timeout)
