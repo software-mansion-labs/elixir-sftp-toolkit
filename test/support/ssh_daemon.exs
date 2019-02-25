@@ -28,8 +28,10 @@ defmodule SFTPToolkit.Support.SSHDaemon do
     quote do
       setup do
         {:ok, tempdir} = SFTPToolkit.Support.SSHDaemon.make_tempdir()
+        {:ok, sftpdir} = SFTPToolkit.Support.SSHDaemon.make_tempdir()
 
         :ok = File.mkdir_p!(tempdir)
+        :ok = File.mkdir_p!(sftpdir)
 
         {:ok, daemon_ref} =
           {:ok, ssh_daemon_ref} =
@@ -37,7 +39,7 @@ defmodule SFTPToolkit.Support.SSHDaemon do
             user_passwords: [{'someuser', 'somepassword'}],
             system_dir: Path.join([System.cwd!(), "test", "extra", "ssh"]) |> to_charlist,
             subsystems: [
-              :ssh_sftpd.subsystem_spec(cwd: tempdir |> to_charlist)
+              :ssh_sftpd.subsystem_spec(cwd: sftpdir |> to_charlist)
             ]
           )
 
@@ -62,6 +64,15 @@ defmodule SFTPToolkit.Support.SSHDaemon do
         on_exit(:del, fn ->
           # Some files created in the tests can have chmod 0o000, we need
           # to fix that prior to removal
+          Path.wildcard(Path.join(sftpdir, "**"))
+          |> Enum.each(fn path ->
+            File.chmod!(path, 0o700)
+          end)
+
+          File.rm_rf!(sftpdir)
+
+          # Some files created in the tests can have chmod 0o000, we need
+          # to fix that prior to removal
           Path.wildcard(Path.join(tempdir, "**"))
           |> Enum.each(fn path ->
             File.chmod!(path, 0o700)
@@ -70,7 +81,7 @@ defmodule SFTPToolkit.Support.SSHDaemon do
           File.rm_rf!(tempdir)
         end)
 
-        [sftp_channel_pid: sftp_channel_pid, tempdir: tempdir]
+        [sftp_channel_pid: sftp_channel_pid, sftpdir: sftpdir, tempdir: tempdir]
       end
     end
   end
