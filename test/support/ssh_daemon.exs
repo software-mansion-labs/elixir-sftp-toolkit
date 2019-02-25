@@ -60,6 +60,13 @@ defmodule SFTPToolkit.Support.SSHDaemon do
         end)
 
         on_exit(:del, fn ->
+          # Some files created in the tests can have chmod 0o000, we need
+          # to fix that prior to removal
+          Path.wildcard(Path.join(tempdir, "**"))
+          |> Enum.each(fn path ->
+            File.chmod!(path, 0o700)
+          end)
+
           File.rm_rf!(tempdir)
         end)
 

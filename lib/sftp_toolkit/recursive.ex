@@ -36,6 +36,7 @@ defmodule SFTPToolkit.Recursive do
   On error returns `{:error, reason}`, where `reason` might be one
   of the following:
 
+  * `{:invalid_path, path}` - given path is invalid,
   * `{:make_dir, info}` - `:ssh_sftp.make_dir/3` failed and `info`
     contains the underlying error returned from it,
   * `{:file_info, path, info}` - `:ssh_sftp.read_file_info/3` failed and
@@ -76,7 +77,13 @@ defmodule SFTPToolkit.Recursive do
   """
   @spec make_dir_recursive(pid, Path.t(), operation_timeout: timeout) :: :ok | {:error, any}
   def make_dir_recursive(sftp_channel_pid, path, options \\ []) do
-    do_make_dir_recursive(sftp_channel_pid, Path.split(path), options, [])
+    case Path.split(path) do
+      [] ->
+        {:error, {:invalid_path, path}}
+
+      path_splitted ->
+        do_make_dir_recursive(sftp_channel_pid, path_splitted, options, [])
+    end
   end
 
   defp do_make_dir_recursive(_sftp_channel_pid, [], _options, _acc), do: :ok
@@ -139,7 +146,8 @@ defmodule SFTPToolkit.Recursive do
   Expects the following arguments:
 
   * `sftp_channel_pid` - PID of already opened SFTP channel,
-  * `path` - path to list, defaults to empty string,
+  * `path` - path to list, defaults to empty string, which will map into
+    SFTP server's default directory,
   * `options` - additional options, see below.
 
   ## Options
@@ -267,6 +275,9 @@ defmodule SFTPToolkit.Recursive do
         _minor_device, _inode, _uid, _gid}} ->
         # Given path is not a directory, error
         {:error, {:invalid_type, path, type}}
+
+      {:error, reason} ->
+        {:error, {:file_info, path, reason}}
     end
   end
 
