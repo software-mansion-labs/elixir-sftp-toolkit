@@ -24,7 +24,7 @@ in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:sftp_toolkit, "~> 0.1.0"}
+    {:sftp_toolkit, "~> 1.0"}
   ]
 end
 ```
