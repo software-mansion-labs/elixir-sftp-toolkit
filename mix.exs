@@ -9,7 +9,7 @@ defmodule SFTPToolkit.MixProject do
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       description: "SFTP Client library extensions",
-      package: package(),
+      package: package()
     ]
   end
 
@@ -22,7 +22,7 @@ defmodule SFTPToolkit.MixProject do
   defp deps do
     [
       {:bunch, "~> 0.3.0"},
-      {:ex_doc, "~> 0.19", only: :dev, runtime: false},
+      {:ex_doc, "~> 0.19", only: :dev, runtime: false}
     ]
   end
 
@@ -35,10 +35,10 @@ defmodule SFTPToolkit.MixProject do
         "mix.exs",
         "README*",
         "LICENSE*",
-        ".formatter.exs",
+        ".formatter.exs"
       ],
       links: %{
-        "GitHub" => "https://github.com/SoftwareMansion/elixir-sftp-toolkit",
+        "GitHub" => "https://github.com/SoftwareMansion/elixir-sftp-toolkit"
       }
     ]
   end
