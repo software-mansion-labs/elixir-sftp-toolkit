@@ -41,7 +41,7 @@ defmodule SFTPToolkit.Recursive do
     contains the underlying error returned from it,
   * `{:file_info, path, info}` - `:ssh_sftp.read_file_info/3` failed and
     `info` contains the underlying error returned from it,
-  * `{:invalid_type, path, type} - one of the components of the
+  * `{:invalid_type, path, type}` - one of the components of the
     path to create, specified as `path` is not a directory, and
     it's actual type is specified as `type`,
   * `{:invalid_access, path, access}` - one of the components of
@@ -223,7 +223,7 @@ defmodule SFTPToolkit.Recursive do
   On error returns `{:error, reason}`, where `reason` might be one
   of the following:
 
-  * `{:invalid_type, path, type} - given path is not a directory and
+  * `{:invalid_type, path, type}` - given path is not a directory and
     it's actual type is specified as `type`,
   * `{:invalid_access, path, access}` - given path is a directory, but
     it's access is is invalid and it's actual access mode is specified
@@ -468,7 +468,7 @@ defmodule SFTPToolkit.Recursive do
   On error returns `{:error, reason}`, where `reason` might be one
   of the following:
 
-  * `{:invalid_type, path, type} - given path is not a directory and
+  * `{:invalid_type, path, type}` - given path is not a directory and
     it's actual type is specified as `type`,
   * `{:invalid_access, path, access}` - given path is a directory, but
     it's access is is invalid and it's actual access mode is specified
