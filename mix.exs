@@ -21,7 +21,7 @@ defmodule SFTPToolkit.MixProject do
 
   defp deps do
     [
-      {:bunch, "~> 0.3.0"},
+      {:bunch, "~> 1.0"},
       {:ex_doc, "~> 0.19", only: :dev, runtime: false}
     ]
   end
